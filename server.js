@@ -1,22 +1,30 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
 const connectDB = require("./config/db");
 const User = require("./models/User");
+const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
-// Middleware pour lire le JSON
+// Middleware JSON
 app.use(express.json());
 
-// Connexion à la base de données
+// CORS (local uniquement)
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production" ? false : "http://localhost:3001",
+  }),
+);
+
+// Connexion MongoDB
 connectDB();
 
 /* =========================
-   ROUTES API REST
+   ROUTES API
 ========================= */
 
-// ✅ GET — retourner tous les utilisateurs
 app.get("/users", async (req, res) => {
   try {
     const users = await User.find();
@@ -26,7 +34,6 @@ app.get("/users", async (req, res) => {
   }
 });
 
-// ✅ POST — ajouter un nouvel utilisateur
 app.post("/users", async (req, res) => {
   try {
     const newUser = new User(req.body);
@@ -37,21 +44,17 @@ app.post("/users", async (req, res) => {
   }
 });
 
-// ✅ PUT — modifier un utilisateur par ID
 app.put("/users/:id", async (req, res) => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { returnDocument: "after" }, // Mongoose récent
-    );
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
+      returnDocument: "after",
+    });
     res.status(200).json(updatedUser);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// ✅ DELETE — supprimer un utilisateur par ID
 app.delete("/users/:id", async (req, res) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
@@ -61,7 +64,20 @@ app.delete("/users/:id", async (req, res) => {
   }
 });
 
-// Lancer le serveur
-app.listen(process.env.PORT, () => {
-  console.log(`🚀 Serveur démarré sur http://localhost:${process.env.PORT}`);
+/* =========================
+   FRONTEND REACT
+========================= */
+
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "public/build")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "public/build", "index.html"));
+  });
+}
+
+// Serveur
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
 });
